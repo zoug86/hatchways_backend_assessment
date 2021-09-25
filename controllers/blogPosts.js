@@ -5,103 +5,70 @@ const axios = require('axios');
 // @route   GET  /api/ping
 // @access  Public
 
-exports.ping = asyncHandler(async (req, res, next) => {
-    res.status(200).json({ sucess: true });
+exports.ping = asyncHandler(async (req, res) => {
+    res.status(200).json({ success: true });
 })
 
 // @desc    Get Blog Posts
 // @route   GET  /api/posts
 // @access  Public
 
-exports.getPosts = asyncHandler(async (req, res, next) => {
+exports.getPosts = asyncHandler(async (req, res) => {
 
-    let { tags, sortBy, direction } = { ...req.query };
-    tags = tags.split(',')
+    let { tags, sortBy = 'id', direction = 'asc' } = { ...req.query };
 
-    //load all Posts (including duplicates)
-    let tempPosts;
-    try {
-        const posts = Promise.all(tags.map((tag) => {
-            return axios.get(`https://api.hatchways.io/assessment/blog/posts?tag=${tag}`);
-        }));
-        tempPosts = await Promise.all([posts]);
+    const sortByValues = ['id', 'likes', 'popularity', 'reads'];
+    const directionValues = ['asc', 'desc'];
 
-    } catch (err) {
-        console.log(err.stack);
+    if (!tags) {
+        res.status(400).json({ error: 'Tags parameter is required' });
     }
-    let allPosts = []
-    for (let tempPost of tempPosts[0]) {
-        allPosts.push(...tempPost.data.posts)
+    else if (sortByValues.indexOf(sortBy) === - 1) {
+        res.status(400).send({ error: 'sortBy parameter is invalid' });
     }
+    else if (directionValues.indexOf(direction) === -1) {
+        res.status(400).send({ error: 'direction parameter is invalid' });
+    }
+    else {
+        let allPosts = []
+        tags = tags.split(',')
+        //load all Posts (including duplicates) concurrently
+        axios.all([
+            axios.get(`https://api.hatchways.io/assessment/blog/posts?tag=${tags[0]}`),
+            axios.get(`https://api.hatchways.io/assessment/blog/posts?tag=${tags[1]}`)
+        ])
+            .then(axios.spread((data1, data2) => {
 
-    // remove duplicates
-    keys = ['author', 'authorId', 'id', 'likes', 'popularity', 'reads'],
-        filteredPosts = allPosts.filter(
-            (s => o =>
-                (k => !s.has(k) && s.add(k))
-                    (keys.map(k => o[k]).join('|'))
-            )
-                (new Set)
-        );
+                allPosts = [...data1.data.posts, ...data2.data.posts];
 
-    res.status(200).json({ sucess: true, posts: filteredPosts });
-    // // Fields to exclude
-    // let removedFields = ['select', 'sort', 'page', 'limit'];
+                //remove duplicates
+                keys = ['author', 'authorId', 'id', 'likes', 'popularity', 'reads'];
+                allPosts = allPosts.filter(
+                    (s => o =>
+                        (k => !s.has(k) && s.add(k))
+                            (keys.map(k => o[k]).join('|'))
+                    )
+                        (new Set)
+                );
 
-    // // Delete the fields from reqQuery
-    // removedFields.forEach(param => delete reqQuery[param]);
+                // Sorting (asc by default)
+                allPosts = allPosts.sort((a, b) => (direction === 'asc' ? a[sortBy] - b[sortBy] : b[sortBy] - a[sortBy]))
 
-    // let queryStr = JSON.stringify(reqQuery);
+                res.status(200).json({ success: true, posts: allPosts });
+            }));
+        //load all Posts (including duplicates) in parallel requests
+        // 
+        //     let tempPosts;
+        //     try {
+        //         const posts = Promise.all(tags.map((tag) => {
+        //             return axios.get(`https://api.hatchways.io/assessment/blog/posts?tag=${tag}`);
+        //         }));
+        //         tempPosts = await Promise.all([posts]);
 
-
-    // if (req.query.select) {
-    //     const fields = req.query.select.split(',').join(' ');
-    //     query = query.select(fields);
-    // }
-
-    // // sorting
-    // if (req.query.sort) {
-    //     const sortBy = req.query.sort.split(',').join(' ');
-    //     query = query.sort(sortBy);
-    // } else {
-    //     query = query.sort('-createdAt');
-    // }
-
-    // Pagination
-    // const page = parseInt(req.query.page, 10) || 1;
-    // const limit = parseInt(req.query.limit, 10) || 25;
-    // const startIndex = (page - 1) * limit;
-    // const endIndex = page * limit;
-    // const total = await model.countDocuments();
-    // //console.log(page, limit, startIndex)
-
-    // query = query.skip(startIndex).limit(limit);
-
-    // if (populate) {
-    //     query = query.populate(populate);
-    // }
-
-    // const results = await query;
-
-    // // pagination result
-    // const pagination = {};
-    // if (endIndex < total) {
-    //     pagination.next = {
-    //         page: page + 1,
-    //         limit
-    //     }
-    // }
-
-    // if (startIndex > 0) {
-    //     pagination.prev = {
-    //         page: page - 1,
-    //         limit
-    //     }
-    // }
-
-    // res.advancedResults = {
-    //     success: true, count: results.length, data: results
-    // }
-    // next();
+        //     } catch (err) {
+        //         console.log(err.stack);
+        //     }
+        ///////////////////////////////////////////////////////////////////////////////////
+    }
 
 })
