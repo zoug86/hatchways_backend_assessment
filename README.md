@@ -97,4 +97,4 @@ Go to:
 
 ### `npm test`
 
-Run ``` npm test``` on your terminal and checking the 9 tests included in: ```tests/posts.js```
+Run ``` npm test``` on your terminal and check the 9 tests included in: ```tests/posts.js```
