@@ -32,6 +32,7 @@ exports.getPosts = asyncHandler(async (req, res) => {
     else {
         let allPosts = []
         tags = tags.split(',')
+
         //load all Posts (including duplicates) concurrently
         axios.all([
             axios.get(`https://api.hatchways.io/assessment/blog/posts?tag=${tags[0]}`),
@@ -52,11 +53,12 @@ exports.getPosts = asyncHandler(async (req, res) => {
                 );
 
                 // Sorting (asc by default)
-                allPosts = allPosts.sort((a, b) => (direction === 'asc' ? a[sortBy] - b[sortBy] : b[sortBy] - a[sortBy]))
+                allPosts = allPosts.sort((a, b) => (direction === 'asc' ? a[sortBy] - b[sortBy] : b[sortBy] - a[sortBy]));
 
-                res.status(200).json({ success: true, posts: allPosts });
+                res.status(200).json({ posts: allPosts });
             }));
-        //load all Posts (including duplicates) in parallel requests
+
+        /*load all Posts (including duplicates) in parallel requests*/
         // 
         //     let tempPosts;
         //     try {
@@ -68,7 +70,7 @@ exports.getPosts = asyncHandler(async (req, res) => {
         //     } catch (err) {
         //         console.log(err.stack);
         //     }
-        ///////////////////////////////////////////////////////////////////////////////////
+        /*************************************************************/
     }
 
 })
